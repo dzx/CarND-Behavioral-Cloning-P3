@@ -26,12 +26,12 @@ measurements = []
 FLIP_IMAGES = True
 USE_SIDE_VIEW = True
 SIDE_CORRECTION = .20
-EPOCHS = 1
+EPOCHS = 3
 DROPOUT_RATE =.4
-ZERO_ANGLE_RATE = .3
-BATCH_SIZE = 24
+ZERO_ANGLE_RATE = .2
+BATCH_SIZE = 32
 
-#_show_image = True
+SHOW_TRAIN_IMAGE = True
 
 def process_line(line, flip_image=False, path_index=0, correction=0):
     img_path = line[path_index]
@@ -51,32 +51,38 @@ def process_line(line, flip_image=False, path_index=0, correction=0):
             measurements.append(-measurement)
             
 def generator(samples, batch_size=32):
+    show_image = SHOW_TRAIN_IMAGE
     num_samples = len(samples)
     while True :
         random.shuffle(samples)
         for offset in range(0, num_samples, batch_size):
             batch_samples = samples[offset:offset+batch_size]
         
-        batch_imgs = []
-        batch_angles = []
-        for batch_sample in batch_samples:
-            measurement = float(batch_sample[3])
-            img_path = batch_sample[0]
-            if (measurement or (random.random() < ZERO_ANGLE_RATE)):
-                if(random.random() < .5):
-                    measurement += SIDE_CORRECTION
-                    img_path = batch_sample[1]
-                else:
-                    measurement -= SIDE_CORRECTION
-                    img_path = batch_sample[2]
-            image = np.flip(cv.imread(img_path), 2)
-            batch_imgs.append(image)
-            batch_angles.append(measurement)
-            if FLIP_IMAGES: # and measurement :
-                image_flipped = np.fliplr(image)
-                batch_imgs.append(image_flipped)
-                batch_angles.append(-measurement)
-            
+            batch_imgs = []
+            batch_angles = []
+#            print("Processing sample {} to {}".format(offset, offset+batch_size))
+            for batch_sample in batch_samples:
+                measurement = float(batch_sample[3])
+                img_path = batch_sample[0]
+                if not (measurement or (random.random() < ZERO_ANGLE_RATE)):
+                    if(random.random() < .5):
+                        measurement += SIDE_CORRECTION
+                        img_path = batch_sample[1]
+                    else:
+                        measurement -= SIDE_CORRECTION
+                        img_path = batch_sample[2]
+                image = np.flip(cv.imread(img_path), 2)
+                if show_image:
+                    show_image = False
+                    plt.imshow(image)
+                    plt.show()
+                batch_imgs.append(image)
+                batch_angles.append(measurement)
+                if FLIP_IMAGES: # and measurement :
+                    image_flipped = np.fliplr(image)
+                    batch_imgs.append(image_flipped)
+                    batch_angles.append(-measurement)
+#            print("Returning {} samples".format(gat))
             X_train = np.array(batch_imgs)
             Y_train = np.array(batch_angles)
             yield sklearn.utils.shuffle(X_train, Y_train)
@@ -161,7 +167,7 @@ model.add(Dense(1))
 model.compile(optimizer='adam', loss='mse')
 #model.fit(X_train, y_train, batch_size=64, nb_epoch=EPOCHS, validation_split=.2, shuffle=True)
 history_obj = model.fit_generator(train_generator, samples_per_epoch=epoch_sample, validation_data=validation_generator,
-                    nb_val_samples= epoch_val, nb_epoch=EPOCHS)
+                    nb_val_samples= epoch_val, nb_epoch=EPOCHS, verbose=1)
 model.save("model.h5")
 print("Model saved")
 plt.plot(history_obj.history['loss'])
