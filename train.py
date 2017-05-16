@@ -25,22 +25,17 @@ measurements = []
 
 FLIP_IMAGES = True
 USE_SIDE_VIEW = True
-SIDE_CORRECTION = .20
+SIDE_CORRECTION = .2
 EPOCHS = 3
 DROPOUT_RATE =.4
-ZERO_ANGLE_RATE = .2
+ZERO_ANGLE_RATE = .1
 BATCH_SIZE = 32
 
-SHOW_TRAIN_IMAGE = True
+SHOW_TRAIN_IMAGE = False
 
 def process_line(line, flip_image=False, path_index=0, correction=0):
     img_path = line[path_index]
     image = np.flip(cv.imread(img_path), 2)
-#    global _show_image 
-#    if _show_image and random.random() < .01 :
-#        _show_image = False
-#        plt.imshow(image)
-#        plt.show()
     measurement = float(line[3])
     if(measurement or (random.random() < ZERO_ANGLE_RATE)):
         images.append(image)
@@ -64,7 +59,7 @@ def generator(samples, batch_size=32):
             for batch_sample in batch_samples:
                 measurement = float(batch_sample[3])
                 img_path = batch_sample[0]
-                if not (measurement or (random.random() < ZERO_ANGLE_RATE)):
+                if not (abs(measurement) > .015 or random.random() < ZERO_ANGLE_RATE):
                     if(random.random() < .5):
                         measurement += SIDE_CORRECTION
                         img_path = batch_sample[1]
